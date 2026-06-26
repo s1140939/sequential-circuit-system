@@ -308,13 +308,617 @@ function generateDesign(
     stateNames,
     stateCodes,
     stateVariables,
+    inputVariables,
+    ffType,
     equations,
   };
 }
 
+function shortText(text: string, maxLength = 34): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + "...";
+}
+
+function splitExpression(expression: string): string[][] {
+  if (expression === "0" || expression === "1") {
+    return [[expression]];
+  }
+
+  return expression
+    .split("+")
+    .map((term) =>
+      term
+        .trim()
+        .split("·")
+        .map((factor) => factor.trim())
+        .filter(Boolean)
+    )
+    .filter((term) => term.length > 0);
+}
+
+function AndGate({
+  x,
+  y,
+  label,
+}: {
+  x: number;
+  y: number;
+  label: string;
+}) {
+  return (
+    <g>
+      <path
+        d={`M ${x} ${y}
+            L ${x + 38} ${y}
+            Q ${x + 76} ${y + 24} ${x + 38} ${y + 48}
+            L ${x} ${y + 48} Z`}
+        className="gate-shape"
+      />
+      <text x={x + 38} y={y + 30} textAnchor="middle" className="gate-text">
+        AND
+      </text>
+      <text x={x + 38} y={y + 70} textAnchor="middle" className="gate-caption">
+        {shortText(label, 22)}
+      </text>
+    </g>
+  );
+}
+
+function OrGate({
+  x,
+  y,
+  label,
+}: {
+  x: number;
+  y: number;
+  label: string;
+}) {
+  return (
+    <g>
+      <path
+        d={`M ${x} ${y}
+            Q ${x + 22} ${y + 24} ${x} ${y + 48}
+            Q ${x + 58} ${y + 48} ${x + 90} ${y + 24}
+            Q ${x + 58} ${y} ${x} ${y}`}
+        className="gate-shape"
+      />
+      <text x={x + 47} y={y + 30} textAnchor="middle" className="gate-text">
+        OR
+      </text>
+      <text x={x + 45} y={y + 70} textAnchor="middle" className="gate-caption">
+        {shortText(label, 24)}
+      </text>
+    </g>
+  );
+}
+
+function NotGate({
+  x,
+  y,
+  label,
+}: {
+  x: number;
+  y: number;
+  label: string;
+}) {
+  return (
+    <g>
+      <path
+        d={`M ${x} ${y} L ${x} ${y + 26} L ${x + 32} ${y + 13} Z`}
+        className="gate-shape"
+      />
+      <circle cx={x + 40} cy={y + 13} r="5" className="gate-shape" />
+      <text x={x + 52} y={y + 18} className="gate-caption">
+        {label}'
+      </text>
+    </g>
+  );
+}
+
+function CircuitDiagram({
+  design,
+  outputVariables,
+}: {
+  design: ReturnType<typeof generateDesign>;
+  outputVariables: string;
+}) {
+  const width = 1240;
+
+  const inputVariables = design.inputVariables;
+  const stateVariables = design.stateVariables;
+  const equations = design.equations;
+  const outputText = parseVariables(outputVariables).join(", ") || "Z";
+
+  const allFactors = equations.flatMap((eq) => splitExpression(eq.expression).flat());
+
+  const inputX1 = 60;
+  const inputX2 = 310;
+  const inputY0 = 90;
+  const inputGap = 74;
+
+  const gateX = 365;
+  const orX = 595;
+  const ffX = 885;
+  const ffW = 155;
+  const ffH = design.ffType === "JK" ? 132 : 98;
+
+  const feedbackRightX = 1130;
+  const feedbackReturnX = 315;
+
+  const equationY0 = 300;
+  const equationGap = 190;
+  const termGap = 64;
+
+  const height = Math.max(780, equationY0 + equations.length * equationGap + 260);
+
+  const outputBlockY = height - 205;
+  const clockY = height - 62;
+
+  const sourcePositions: Record<string, { x: number; y: number }> = {};
+
+  inputVariables.forEach((input, index) => {
+    const y = inputY0 + index * inputGap;
+    sourcePositions[input] = { x: inputX2, y };
+
+    if (allFactors.includes(`${input}'`)) {
+      sourcePositions[`${input}'`] = { x: inputX2, y: y + 34 };
+    }
+  });
+
+  function getEquationY(eqIndex: number) {
+    return equationY0 + eqIndex * equationGap;
+  }
+
+  function getFfIndexByInput(inputName: string) {
+    const qNumber = inputName.replace(/[A-Z]/g, "");
+    return stateVariables.findIndex((q) => q.replace("Q", "") === qNumber);
+  }
+
+  function getInputPinOffset(inputName: string) {
+    if (design.ffType === "D") return 56;
+    if (inputName.startsWith("J")) return 48;
+    return 100;
+  }
+
+  function getFfY(q: string) {
+    const qNumber = q.replace("Q", "");
+
+    const related = equations
+      .map((eq, index) => ({ eq, index }))
+      .filter(({ eq }) => eq.inputName.endsWith(qNumber));
+
+    if (related.length === 0) return equationY0;
+
+    const yList = related.map(({ eq, index }) => {
+      return getEquationY(index) + 24 - getInputPinOffset(eq.inputName);
+    });
+
+    return yList.reduce((sum, y) => sum + y, 0) / yList.length;
+  }
+
+  function getInputPinY(inputName: string) {
+    const ffIndex = getFfIndexByInput(inputName);
+    if (ffIndex < 0) return equationY0;
+
+    const q = stateVariables[ffIndex];
+    return getFfY(q) + getInputPinOffset(inputName);
+  }
+
+  function getQOutputY(q: string) {
+    return getFfY(q) + 48;
+  }
+
+  function getQBarOutputY(q: string) {
+    return getFfY(q) + 76;
+  }
+
+  function getFeedbackLaneY(signal: string) {
+    const base = signal.replace("'", "");
+    const qIndex = stateVariables.indexOf(base);
+    const isBar = signal.endsWith("'");
+
+    return 150 + qIndex * 60 + (isBar ? 26 : 0);
+  }
+
+  stateVariables.forEach((q) => {
+    sourcePositions[q] = {
+      x: feedbackReturnX,
+      y: getFeedbackLaneY(q),
+    };
+
+    sourcePositions[`${q}'`] = {
+      x: feedbackReturnX,
+      y: getFeedbackLaneY(`${q}'`),
+    };
+  });
+
+  function getSource(factor: string) {
+    return sourcePositions[factor] ?? { x: inputX2, y: inputY0 };
+  }
+
+  return (
+    <div className="diagram-wrapper">
+      <svg
+        className="circuit-svg"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Sequential circuit diagram"
+      >
+        <defs>
+          <marker
+            id="arrow"
+            markerWidth="10"
+            markerHeight="10"
+            refX="8"
+            refY="3"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M0,0 L0,6 L9,3 z" fill="#222" />
+          </marker>
+
+          <marker
+            id="feedbackArrow"
+            markerWidth="10"
+            markerHeight="10"
+            refX="8"
+            refY="3"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M0,0 L0,6 L9,3 z" fill="#555" />
+          </marker>
+        </defs>
+
+        <text x="40" y="35" className="svg-title">
+          Output 2: Sequential Circuit Diagram ({design.ffType}-FF)
+        </text>
+
+        {/* External input X */}
+        {inputVariables.map((input, index) => {
+          const y = inputY0 + index * inputGap;
+          const needComplement = allFactors.includes(`${input}'`);
+
+          return (
+            <g key={input}>
+              <text x="40" y={y + 5} className="signal-label">
+                {input}
+              </text>
+
+              <line
+                x1={inputX1}
+                y1={y}
+                x2={inputX2}
+                y2={y}
+                className="main-signal-wire"
+                markerEnd="url(#arrow)"
+              />
+
+              {needComplement && (
+                <>
+                  <line
+                    x1={inputX1 + 40}
+                    y1={y}
+                    x2={inputX1 + 40}
+                    y2={y + 34}
+                    className="thin-wire"
+                  />
+                  <NotGate x={inputX1 + 58} y={y + 21} label={input} />
+                  <line
+                    x1={inputX1 + 102}
+                    y1={y + 34}
+                    x2={inputX2}
+                    y2={y + 34}
+                    className="thin-wire"
+                    markerEnd="url(#arrow)"
+                  />
+                </>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Clear feedback return lanes */}
+        {stateVariables.map((q) => {
+          const qLaneY = getFeedbackLaneY(q);
+          const qBarLaneY = getFeedbackLaneY(`${q}'`);
+
+          return (
+            <g key={`feedback-lane-${q}`}>
+              <text x={feedbackReturnX - 42} y={qLaneY + 5} className="feedback-label">
+                {q}
+              </text>
+
+              <line
+                x1={feedbackRightX}
+                y1={qLaneY}
+                x2={feedbackReturnX}
+                y2={qLaneY}
+                className="feedback-lane"
+                markerEnd="url(#feedbackArrow)"
+              />
+
+              <text x={feedbackReturnX - 42} y={qBarLaneY + 5} className="feedback-label">
+                {q}'
+              </text>
+
+              <line
+                x1={feedbackRightX}
+                y1={qBarLaneY}
+                x2={feedbackReturnX}
+                y2={qBarLaneY}
+                className="feedback-lane"
+                markerEnd="url(#feedbackArrow)"
+              />
+            </g>
+          );
+        })}
+
+        <text x={feedbackReturnX + 18} y="128" className="svg-note">
+          feedback return from FF outputs
+        </text>
+
+        {/* Logic gates */}
+        {equations.map((eq, eqIndex) => {
+          const rowY = getEquationY(eqIndex);
+          const pinY = getInputPinY(eq.inputName);
+          const terms = splitExpression(eq.expression);
+
+          return (
+            <g key={eq.inputName}>
+              <text x={gateX} y={rowY - 36} className="equation-label">
+                {eq.inputName} = {shortText(eq.expression, 54)}
+              </text>
+
+              {eq.expression === "0" || eq.expression === "1" ? (
+                <>
+                  <circle cx={gateX + 42} cy={rowY + 24} r="18" className="const-node" />
+                  <text
+                    x={gateX + 42}
+                    y={rowY + 30}
+                    textAnchor="middle"
+                    className="gate-text"
+                  >
+                    {eq.expression}
+                  </text>
+
+                  <line
+                    x1={gateX + 60}
+                    y1={rowY + 24}
+                    x2={ffX}
+                    y2={pinY}
+                    className="svg-wire"
+                    markerEnd="url(#arrow)"
+                  />
+                </>
+              ) : (
+                <>
+                  {terms.map((term, termIndex) => {
+                    const gateY = rowY + termIndex * termGap;
+                    const termLabel = term.join("·");
+
+                    return (
+                      <g key={`${eq.inputName}-term-${termIndex}`}>
+                        <AndGate x={gateX} y={gateY} label={termLabel} />
+
+                        {term.map((factor, factorIndex) => {
+                          const source = getSource(factor);
+                          const routeX = gateX - 72 - factorIndex * 22;
+                          const targetY = gateY + 12 + factorIndex * 16;
+
+                          return (
+                            <path
+                              key={`${eq.inputName}-${factor}-${factorIndex}`}
+                              d={`M ${source.x} ${source.y}
+                                  H ${routeX}
+                                  V ${targetY}
+                                  H ${gateX}`}
+                              className="logic-input-wire"
+                              fill="none"
+                            />
+                          );
+                        })}
+
+                        {terms.length > 1 ? (
+                          <line
+                            x1={gateX + 76}
+                            y1={gateY + 24}
+                            x2={orX}
+                            y2={rowY + 24}
+                            className="svg-wire"
+                            markerEnd="url(#arrow)"
+                          />
+                        ) : (
+                          <line
+                            x1={gateX + 76}
+                            y1={gateY + 24}
+                            x2={ffX}
+                            y2={pinY}
+                            className="svg-wire"
+                            markerEnd="url(#arrow)"
+                          />
+                        )}
+                      </g>
+                    );
+                  })}
+
+                  {terms.length > 1 && (
+                    <>
+                      <OrGate x={orX} y={rowY} label={eq.expression} />
+                      <line
+                        x1={orX + 90}
+                        y1={rowY + 24}
+                        x2={ffX}
+                        y2={pinY}
+                        className="svg-wire"
+                        markerEnd="url(#arrow)"
+                      />
+                    </>
+                  )}
+                </>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Flip-flops and real feedback loops */}
+        {stateVariables.map((q) => {
+          const y = getFfY(q);
+          const qNumber = q.replace("Q", "");
+          const qOutY = getQOutputY(q);
+          const qBarOutY = getQBarOutputY(q);
+
+          const qLaneY = getFeedbackLaneY(q);
+          const qBarLaneY = getFeedbackLaneY(`${q}'`);
+
+          return (
+            <g key={q}>
+              <rect x={ffX} y={y} width={ffW} height={ffH} rx="8" className="svg-ff" />
+
+              <text x={ffX + ffW / 2} y={y - 10} textAnchor="middle" className="svg-label">
+                {q}
+              </text>
+
+              <text x={ffX + ffW / 2} y={y + 25} textAnchor="middle" className="svg-label">
+                {design.ffType} Flip-Flop
+              </text>
+
+              {design.ffType === "D" ? (
+                <text x={ffX + 14} y={y + 61} className="pin-label">
+                  D{qNumber}
+                </text>
+              ) : (
+                <>
+                  <text x={ffX + 14} y={y + 53} className="pin-label">
+                    J{qNumber}
+                  </text>
+                  <text x={ffX + 14} y={y + 105} className="pin-label">
+                    K{qNumber}
+                  </text>
+                </>
+              )}
+
+              <text x={ffX + 68} y={y + ffH - 12} className="pin-label">
+                CLK
+              </text>
+
+              <text x={ffX + ffW - 30} y={qOutY + 5} className="pin-label">
+                Q
+              </text>
+
+              <text x={ffX + ffW - 36} y={qBarOutY + 5} className="pin-label">
+                Q'
+              </text>
+
+              {/* visible Q output */}
+              <line
+                x1={ffX + ffW}
+                y1={qOutY}
+                x2={1120}
+                y2={qOutY}
+                className="svg-wire"
+                markerEnd="url(#arrow)"
+              />
+
+              <text x="1132" y={qOutY + 5} className="signal-label">
+                {q}
+              </text>
+
+              {/* Q feedback: output -> right side -> upper return lane */}
+              <path
+                d={`M ${ffX + ffW + 35} ${qOutY}
+                    H ${feedbackRightX}
+                    V ${qLaneY}
+                    H ${feedbackRightX}`}
+                className="feedback-return-wire"
+                fill="none"
+              />
+
+              {/* Q' feedback */}
+              <path
+                d={`M ${ffX + ffW} ${qBarOutY}
+                    H ${feedbackRightX + 18}
+                    V ${qBarLaneY}
+                    H ${feedbackRightX}`}
+                className="feedback-return-wire"
+                fill="none"
+              />
+            </g>
+          );
+        })}
+
+        {/* Output logic */}
+        <rect
+          x={ffX}
+          y={outputBlockY}
+          width="185"
+          height="76"
+          rx="10"
+          className="svg-output"
+        />
+
+        <text x={ffX + 92} y={outputBlockY + 32} textAnchor="middle" className="svg-label">
+          Output Logic
+        </text>
+
+        <text x={ffX + 92} y={outputBlockY + 58} textAnchor="middle" className="svg-small">
+          Output: {outputText}
+        </text>
+
+        <path
+          d={`M ${inputX2} ${inputY0}
+              H ${ffX - 95}
+              V ${outputBlockY + 38}
+              H ${ffX}`}
+          className="logic-input-wire"
+          fill="none"
+          markerEnd="url(#arrow)"
+        />
+
+        <line
+          x1={ffX + 185}
+          y1={outputBlockY + 38}
+          x2="1120"
+          y2={outputBlockY + 38}
+          className="svg-wire"
+          markerEnd="url(#arrow)"
+        />
+
+        <text x="1132" y={outputBlockY + 43} className="signal-label">
+          {outputText}
+        </text>
+
+        {/* Clock */}
+        <line x1="55" y1={clockY} x2="1070" y2={clockY} className="clock-wire" />
+        <text x="55" y={clockY - 14} className="signal-label">
+          CLK
+        </text>
+
+        {stateVariables.map((q) => {
+          const y = getFfY(q);
+
+          return (
+            <line
+              key={`clk-${q}`}
+              x1={ffX + 72}
+              y1={clockY}
+              x2={ffX + 72}
+              y2={y + ffH}
+              className="clock-wire"
+              markerEnd="url(#arrow)"
+            />
+          );
+        })}
+
+        <text x="40" y={height - 20} className="svg-note">
+          Circuit diagram is generated from simplified flip-flop input equations.
+        </text>
+      </svg>
+    </div>
+  );
+}
+
 export default function App() {
-  const [studentName, setStudentName] = useState("請填姓名");
-  const [studentId, setStudentId] = useState("請填學號");
 
   const [modelType, setModelType] = useState<ModelType>("Mealy");
   const [ffType, setFfType] = useState<FFType>("JK");
@@ -376,19 +980,9 @@ export default function App() {
       <header className="top-bar">
         <div>
           <h1>Sequential Circuit Design Automation System</h1>
-          <p>
-            姓名：
-            <input
-              className="student-input"
-              value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
-            />
-            學號：
-            <input
-              className="student-input"
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-            />
+          <p className="student-info">
+            姓名：<span>邵亭毓</span>
+            學號：<span>1140939</span>
           </p>
         </div>
       </header>
@@ -526,7 +1120,7 @@ export default function App() {
 
           {!generated && (
             <p className="hint">
-              請先按下 Generate。今天的目標是先完成 Output1。
+              請按下 Generate，生成Output1。
             </p>
           )}
 
@@ -583,10 +1177,20 @@ export default function App() {
 
         <section className="panel diagram-panel">
           <h2>Output 2: Sequential Circuit Diagram</h2>
-          <div className="placeholder">
-            <p>明天完成這一區。</p>
-            <p>今日先確認 Output1 正常產生。</p>
-          </div>
+
+          {!generated && (
+            <div className="placeholder">
+              <p>請按下 Generate。</p>
+              <p>系統會根據 Output1 自動產生 sequential circuit diagram。</p>
+            </div>
+          )}
+
+          {generated && (
+            <CircuitDiagram
+              design={generated}
+              outputVariables={outputVariables}
+            />
+          )}
         </section>
       </main>
 

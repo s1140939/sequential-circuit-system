@@ -192,3 +192,542 @@ button:disabled {
   color: #777;
   background: #f8fafc;
 }
+
+
+.diagram-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.circuit-svg {
+  width: 100%;
+  min-width: 760px;
+  min-height: 480px;
+  border: 1px solid #d8dee8;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.svg-title {
+  font-size: 20px;
+  font-weight: bold;
+  fill: #12385f;
+}
+
+.svg-label {
+  font-size: 14px;
+  font-weight: bold;
+  fill: #222;
+}
+
+.svg-small {
+  font-size: 12px;
+  fill: #333;
+}
+
+.svg-equation {
+  font-size: 13px;
+  font-family: "Consolas", monospace;
+  fill: #135db3;
+}
+
+.svg-note {
+  font-size: 12px;
+  fill: #666;
+}
+
+.svg-input {
+  fill: #e8f1ff;
+  stroke: #2f74d0;
+  stroke-width: 2;
+}
+
+.svg-logic {
+  fill: #fff8e6;
+  stroke: #d39c28;
+  stroke-width: 2;
+}
+
+.svg-ff {
+  fill: #edf9ed;
+  stroke: #57a957;
+  stroke-width: 2;
+}
+
+.svg-output {
+  fill: #f3e8ff;
+  stroke: #8b5cc2;
+  stroke-width: 2;
+}
+
+.svg-wire {
+  stroke: #333;
+  stroke-width: 2;
+}
+
+.svg-feedback {
+  stroke: #777;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.svg-clock {
+  stroke: #bd3b3b;
+  stroke-width: 2;
+}
+
+
+.signal-label {
+  font-size: 13px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.signal-wire {
+  stroke: #222;
+  stroke-width: 1.8;
+}
+
+.thin-wire {
+  stroke: #555;
+  stroke-width: 1.2;
+}
+
+.feedback-wire {
+  stroke: #444;
+  stroke-width: 1.6;
+  stroke-dasharray: 5 4;
+}
+
+.clock-wire {
+  stroke: #b00020;
+  stroke-width: 2;
+}
+
+.gate-shape {
+  fill: white;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+.gate-text {
+  font-size: 10px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.pin-label {
+  font-size: 11px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.equation-label {
+  font-size: 12px;
+  font-family: "Consolas", monospace;
+  fill: #0d47a1;
+}
+
+.const-node {
+  fill: #fff;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+
+.gate-caption {
+  font-size: 10px;
+  fill: #333;
+}
+
+.equation-label {
+  font-size: 13px;
+  font-family: "Consolas", monospace;
+  fill: #0d47a1;
+  font-weight: bold;
+}
+
+.signal-label {
+  font-size: 13px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.signal-wire {
+  stroke: #222;
+  stroke-width: 1.8;
+}
+
+.thin-wire {
+  stroke: #555;
+  stroke-width: 1.2;
+}
+
+.feedback-wire {
+  stroke: #444;
+  stroke-width: 1.6;
+  stroke-dasharray: 5 4;
+}
+
+.clock-wire {
+  stroke: #b00020;
+  stroke-width: 2.2;
+}
+
+.gate-shape {
+  fill: white;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+.gate-text {
+  font-size: 10px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.pin-label {
+  font-size: 11px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.const-node {
+  fill: #fff;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+
+.svg-output {
+  fill: #f3e8ff;
+  stroke: #8b5cc2;
+  stroke-width: 2;
+}
+
+.gate-caption {
+  font-size: 10px;
+  fill: #333;
+}
+
+.equation-label {
+  font-size: 13px;
+  font-family: "Consolas", monospace;
+  fill: #0d47a1;
+  font-weight: bold;
+}
+
+.signal-label {
+  font-size: 13px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.signal-wire {
+  stroke: #222;
+  stroke-width: 1.8;
+}
+
+.thin-wire {
+  stroke: #555;
+  stroke-width: 1.2;
+}
+
+.feedback-wire {
+  stroke: #444;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.clock-wire {
+  stroke: #b00020;
+  stroke-width: 2.2;
+}
+
+.gate-shape {
+  fill: white;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+.gate-text {
+  font-size: 10px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.pin-label {
+  font-size: 11px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.const-node {
+  fill: #fff;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+
+.section-label {
+  font-size: 13px;
+  font-weight: bold;
+  fill: #555;
+}
+
+.feedback-label {
+  font-size: 12px;
+  font-weight: bold;
+  fill: #444;
+}
+
+.gate-caption {
+  font-size: 10px;
+  fill: #333;
+}
+
+.equation-label {
+  font-size: 13px;
+  font-family: "Consolas", monospace;
+  fill: #0d47a1;
+  font-weight: bold;
+}
+
+.signal-label {
+  font-size: 13px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.signal-wire {
+  stroke: #222;
+  stroke-width: 1.8;
+}
+
+.thin-wire {
+  stroke: #555;
+  stroke-width: 1.15;
+}
+
+.feedback-wire {
+  stroke: #444;
+  stroke-width: 1.45;
+  stroke-dasharray: 6 4;
+}
+
+.clock-wire {
+  stroke: #b00020;
+  stroke-width: 2.2;
+}
+
+.gate-shape {
+  fill: white;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+.gate-text {
+  font-size: 10px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.pin-label {
+  font-size: 11px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.const-node {
+  fill: #fff;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+.svg-output {
+  fill: #f3e8ff;
+  stroke: #8b5cc2;
+  stroke-width: 2;
+}
+
+
+.main-signal-wire {
+  stroke: #222;
+  stroke-width: 2;
+}
+
+.feedback-bus {
+  stroke: #222;
+  stroke-width: 1.7;
+}
+
+.feedback-return-wire {
+  stroke: #333;
+  stroke-width: 1.7;
+  stroke-dasharray: 7 5;
+}
+
+.logic-input-wire {
+  stroke: #555;
+  stroke-width: 1.15;
+}
+
+.gate-caption {
+  font-size: 10px;
+  fill: #333;
+}
+
+.equation-label {
+  font-size: 13px;
+  font-family: "Consolas", monospace;
+  fill: #0d47a1;
+  font-weight: bold;
+}
+
+.signal-label {
+  font-size: 13px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.thin-wire {
+  stroke: #555;
+  stroke-width: 1.1;
+}
+
+.clock-wire {
+  stroke: #b00020;
+  stroke-width: 2.3;
+}
+
+.gate-shape {
+  fill: white;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+.gate-text {
+  font-size: 10px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.pin-label {
+  font-size: 11px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.const-node {
+  fill: #fff;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+.svg-output {
+  fill: #f3e8ff;
+  stroke: #8b5cc2;
+  stroke-width: 2;
+}
+
+
+.feedback-lane {
+  stroke: #555;
+  stroke-width: 1.8;
+  stroke-dasharray: 8 5;
+}
+
+.feedback-return-wire {
+  stroke: #333;
+  stroke-width: 2;
+  stroke-dasharray: 8 5;
+}
+
+.main-signal-wire {
+  stroke: #222;
+  stroke-width: 2;
+}
+
+.logic-input-wire {
+  stroke: #555;
+  stroke-width: 1.2;
+}
+
+.gate-caption {
+  font-size: 10px;
+  fill: #333;
+}
+
+.equation-label {
+  font-size: 13px;
+  font-family: "Consolas", monospace;
+  fill: #0d47a1;
+  font-weight: bold;
+}
+
+.signal-label {
+  font-size: 13px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.feedback-label {
+  font-size: 12px;
+  font-weight: bold;
+  fill: #444;
+}
+
+.thin-wire {
+  stroke: #555;
+  stroke-width: 1.1;
+}
+
+.clock-wire {
+  stroke: #b00020;
+  stroke-width: 2.3;
+}
+
+.gate-shape {
+  fill: white;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+.gate-text {
+  font-size: 10px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.pin-label {
+  font-size: 11px;
+  font-weight: bold;
+  fill: #111;
+}
+
+.const-node {
+  fill: #fff;
+  stroke: #222;
+  stroke-width: 1.6;
+}
+
+.svg-output {
+  fill: #f3e8ff;
+  stroke: #8b5cc2;
+  stroke-width: 2;
+}
+
+
+.student-info {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.student-info span {
+  display: inline-block;
+  margin-right: 24px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.18);
+}
