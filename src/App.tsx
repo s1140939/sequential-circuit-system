@@ -15,6 +15,9 @@ type Equation = {
   flipflop: string;
   inputName: string;
   expression: string;
+  minterms: string[];
+  dontCares: string[];
+  variables: string[];
 };
 
 const exampleRows: StateRow[] = [
@@ -268,6 +271,9 @@ function generateDesign(
         flipflop: `FF for Q${label}`,
         inputName: `D${label}`,
         expression: simplifySOP(minterms, dontCares, allVariables),
+        minterms,
+        dontCares,
+        variables: allVariables,
       });
     }
 
@@ -294,12 +300,18 @@ function generateDesign(
         flipflop: `FF for Q${label}`,
         inputName: `J${label}`,
         expression: simplifySOP(jMinterms, jDontCares, allVariables),
+        minterms: jMinterms,
+        dontCares: jDontCares,
+        variables: allVariables,
       });
 
       equations.push({
         flipflop: `FF for Q${label}`,
         inputName: `K${label}`,
         expression: simplifySOP(kMinterms, kDontCares, allVariables),
+        minterms: kMinterms,
+        dontCares: kDontCares,
+        variables: allVariables,
       });
     }
   }
@@ -412,6 +424,119 @@ function NotGate({
         {label}'
       </text>
     </g>
+  );
+}
+
+function grayCodes(bits: number): string[] {
+  if (bits === 0) return [""];
+  if (bits === 1) return ["0", "1"];
+
+  const previous = grayCodes(bits - 1);
+
+  return [
+    ...previous.map((code) => "0" + code),
+    ...previous
+      .slice()
+      .reverse()
+      .map((code) => "1" + code),
+  ];
+}
+
+function getKMapValue(eq: Equation, combination: string): string {
+  if (eq.minterms.includes(combination)) return "1";
+  if (eq.dontCares.includes(combination)) return "X";
+  return "0";
+}
+
+function KMapTable({ equation }: { equation: Equation }) {
+  const variableCount = equation.variables.length;
+
+  if (variableCount < 2 || variableCount > 4) {
+    return (
+      <div className="kmap-card">
+        <h4>K-map for {equation.inputName}</h4>
+        <p className="hint">
+          K-map preview currently supports 2 to 4 variables.
+        </p>
+      </div>
+    );
+  }
+
+  const rowVariableCount = Math.floor(variableCount / 2);
+  const colVariableCount = variableCount - rowVariableCount;
+
+  const rowVariables = equation.variables.slice(0, rowVariableCount);
+  const colVariables = equation.variables.slice(rowVariableCount);
+
+  const rowCodes = grayCodes(rowVariableCount);
+  const colCodes = grayCodes(colVariableCount);
+
+  return (
+    <div className="kmap-card">
+      <h4>
+        K-map for {equation.inputName}: {equation.inputName} ={" "}
+        {equation.expression}
+      </h4>
+
+      <table className="kmap-table">
+        <thead>
+          <tr>
+            <th>
+              {rowVariables.join("")}\{colVariables.join("")}
+            </th>
+            {colCodes.map((col) => (
+              <th key={col}>{col}</th>
+            ))}
+          </tr>
+        </thead>
+
+        <tbody>
+          {rowCodes.map((row) => (
+            <tr key={row}>
+              <th>{row}</th>
+
+              {colCodes.map((col) => {
+                const combination = row + col;
+                const value = getKMapValue(equation, combination);
+
+                return (
+                  <td
+                    key={combination}
+                    className={
+                      value === "1"
+                        ? "kmap-one"
+                        : value === "X"
+                        ? "kmap-dontcare"
+                        : ""
+                    }
+                  >
+                    {value}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <p className="kmap-note">
+        Variables order: {equation.variables.join(", ")}. X means don't-care.
+      </p>
+    </div>
+  );
+}
+
+function KMapPreview({ equations }: { equations: Equation[] }) {
+  return (
+    <div className="kmap-section">
+      <h3>K-map Preview</h3>
+
+      <div className="kmap-grid">
+        {equations.map((eq) => (
+          <KMapTable key={eq.inputName} equation={eq} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1146,6 +1271,8 @@ export default function App() {
                   ))}
                 </tbody>
               </table>
+              
+              <KMapPreview equations={generated.equations} />
 
               <h3>State Variables: {stateVariableText}</h3>
 

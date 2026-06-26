@@ -731,3 +731,65 @@ button:disabled {
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.18);
 }
+
+
+.kmap-section {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 2px solid #e4eaf2;
+}
+
+.kmap-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.kmap-card {
+  border: 1px solid #cfd8e6;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fbfdff;
+}
+
+.kmap-card h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #12385f;
+}
+
+.kmap-table {
+  border-collapse: collapse;
+  margin-top: 8px;
+  min-width: 260px;
+}
+
+.kmap-table th,
+.kmap-table td {
+  border: 1px solid #b8c4d6;
+  width: 52px;
+  height: 38px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.kmap-table th {
+  background: #eef4ff;
+  color: #12385f;
+}
+
+.kmap-one {
+  background: #dff3df;
+  color: #145a14;
+}
+
+.kmap-dontcare {
+  background: #fff4cf;
+  color: #8a5a00;
+}
+
+.kmap-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #666;
+}
