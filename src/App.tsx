@@ -1049,236 +1049,416 @@ function CircuitDiagram({
   );
 }
 
-function downloadSvg(svgId: string, filename: string) {
-  const svgElement = document.getElementById(svgId);
+
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function getCurrentCircuitSvgHtml(): string {
+  const svgElement = document.querySelector(
+    ".diagram-panel svg"
+  ) as SVGSVGElement | null;
 
   if (!svgElement) {
-    alert("找不到可以下載的圖表。");
-    return;
+    return `<p class="note">Output2 diagram is not available. Please generate the circuit first.</p>`;
   }
 
+  const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+  clonedSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+  const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
+  style.textContent = `
+    .svg-title { font-size: 20px; font-weight: bold; fill: #12385f; }
+    .svg-label { font-size: 14px; font-weight: bold; fill: #222; }
+    .svg-small { font-size: 12px; fill: #333; }
+    .svg-note { font-size: 12px; fill: #666; }
+    .signal-label { font-size: 13px; font-weight: bold; fill: #111; }
+    .feedback-label { font-size: 12px; font-weight: bold; fill: #444; }
+    .equation-label { font-size: 13px; font-family: Consolas, monospace; fill: #0d47a1; font-weight: bold; }
+    .gate-caption { font-size: 10px; fill: #333; }
+    .gate-text { font-size: 10px; font-weight: bold; fill: #111; }
+    .pin-label { font-size: 11px; font-weight: bold; fill: #111; }
+    .gate-shape { fill: white; stroke: #222; stroke-width: 1.6; }
+    .const-node { fill: #fff; stroke: #222; stroke-width: 1.6; }
+    .svg-ff { fill: #edf9ed; stroke: #57a957; stroke-width: 2; }
+    .svg-output { fill: #f3e8ff; stroke: #8b5cc2; stroke-width: 2; }
+    .svg-wire { stroke: #333; stroke-width: 2; }
+    .thin-wire { stroke: #555; stroke-width: 1.1; }
+    .logic-input-wire { stroke: #555; stroke-width: 1.2; }
+    .main-signal-wire { stroke: #222; stroke-width: 2; }
+    .feedback-lane { stroke: #555; stroke-width: 1.8; stroke-dasharray: 8 5; }
+    .feedback-return-wire { stroke: #333; stroke-width: 2; stroke-dasharray: 8 5; }
+    .clock-wire { stroke: #b00020; stroke-width: 2.3; }
+  `;
+
+  clonedSvg.insertBefore(style, clonedSvg.firstChild);
+
   const serializer = new XMLSerializer();
-  const svgText = serializer.serializeToString(svgElement);
-
-  const blob = new Blob([svgText], {
-    type: "image/svg+xml;charset=utf-8",
-  });
-
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = filename;
-  link.click();
-
-  URL.revokeObjectURL(url);
+  return serializer.serializeToString(clonedSvg);
 }
 
 
-function StateTransitionChart({
-  design,
+
+function exportReport({
+  modelType,
+  ffType,
+  inputVariables,
+  outputVariables,
+  rows,
+  generated,
 }: {
-  design: ReturnType<typeof generateDesign>;
+  modelType: ModelType;
+  ffType: FFType;
+  inputVariables: string;
+  outputVariables: string;
+  rows: StateRow[];
+  generated: ReturnType<typeof generateDesign> | null;
 }) {
-  const width = 760;
-  const height = 420;
-  const centerX = width / 2;
-  const centerY = height / 2 + 20;
-  const radius = 135;
-
-  const states = design.stateNames;
-
-  const positions: Record<string, { x: number; y: number }> = {};
-
-  states.forEach((state, index) => {
-    const angle = (2 * Math.PI * index) / states.length - Math.PI / 2;
-    positions[state] = {
-      x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle),
-    };
-  });
-
-  function getSelfLoopPath(x: number, y: number) {
-    return `M ${x + 25} ${y - 35}
-            C ${x + 95} ${y - 95}, ${x - 95} ${y - 95}, ${x - 25} ${y - 35}`;
+  if (!generated) {
+    alert("請先按 Generate 產生結果後再輸出報告。");
+    return;
   }
 
-  function getTransitionPath(from: string, to: string, index: number) {
-    const start = positions[from];
-    const end = positions[to];
+  const stateTableRows = rows
+    .map(
+      (row) => `
+        <tr>
+          <td>${escapeHtml(row.present)}</td>
+          <td>${escapeHtml(row.input)}</td>
+          <td>${escapeHtml(row.next)}</td>
+          <td>${escapeHtml(row.output)}</td>
+        </tr>
+      `
+    )
+    .join("");
 
-    if (!start || !end) return "";
+  const stateEncodingRows = generated.stateNames
+    .map(
+      (state) => `
+        <tr>
+          <td>${escapeHtml(state)}</td>
+          <td>${escapeHtml(generated.stateCodes[state])}</td>
+        </tr>
+      `
+    )
+    .join("");
 
-    if (from === to) {
-      return getSelfLoopPath(start.x, start.y);
+  const equationRows = generated.equations
+    .map(
+      (eq) => `
+        <tr>
+          <td>${escapeHtml(eq.flipflop)}</td>
+          <td>${escapeHtml(eq.inputName)}</td>
+          <td>${escapeHtml(eq.inputName)} = ${escapeHtml(eq.expression)}</td>
+        </tr>
+      `
+    )
+    .join("");
+
+  const kmapRows = generated.equations
+    .map((eq) => {
+      const minterms = "minterms" in eq ? eq.minterms.join(", ") : "";
+      const dontCares = "dontCares" in eq ? eq.dontCares.join(", ") : "";
+      const variables = "variables" in eq ? eq.variables.join(", ") : "";
+
+      return `
+        <tr>
+          <td>${escapeHtml(eq.inputName)}</td>
+          <td>${escapeHtml(variables)}</td>
+          <td>${escapeHtml(minterms || "-")}</td>
+          <td>${escapeHtml(dontCares || "-")}</td>
+          <td>${escapeHtml(eq.expression)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+const circuitSvgHtml = getCurrentCircuitSvgHtml();
+
+const reportHtml = `
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sequential Circuit Result Report</title>
+
+  <style>
+    body {
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      color: #222;
+      padding: 32px;
+      line-height: 1.6;
     }
 
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const length = Math.sqrt(dx * dx + dy * dy) || 1;
+    h1 {
+      text-align: center;
+      color: #0f3558;
+      margin-bottom: 6px;
+    }
 
-    const nodeRadius = 32;
+    h2 {
+      color: #12385f;
+      border-bottom: 2px solid #d8e2f0;
+      padding-bottom: 6px;
+      margin-top: 28px;
+    }
 
-    const startX = start.x + (dx / length) * nodeRadius;
-    const startY = start.y + (dy / length) * nodeRadius;
-    const endX = end.x - (dx / length) * nodeRadius;
-    const endY = end.y - (dy / length) * nodeRadius;
+    .meta {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 24px;
+    }
 
-    const curveOffset = index % 2 === 0 ? 28 : -28;
-    const midX = (startX + endX) / 2 - (dy / length) * curveOffset;
-    const midY = (startY + endY) / 2 + (dx / length) * curveOffset;
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      justify-content: center;
+    }
 
-    return `M ${startX} ${startY} Q ${midX} ${midY} ${endX} ${endY}`;
+    button {
+      padding: 9px 16px;
+      border: 1px solid #c7d0dd;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #f1f5fb;
+    }
+
+    .info-box {
+      border: 1px solid #ccd6e4;
+      background: #f7faff;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 16px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #bfc9d8;
+      padding: 8px 10px;
+      text-align: center;
+    }
+
+    th {
+      background: #eef4ff;
+      color: #12385f;
+    }
+
+    .code {
+      font-family: Consolas, monospace;
+      color: #0d47a1;
+      font-weight: bold;
+    }
+
+    .flow {
+      border-left: 4px solid #2f74d0;
+      padding-left: 16px;
+      background: #f8fbff;
+      margin: 14px 0;
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+
+    .diagram-box {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid #cfd8e6;
+      border-radius: 10px;
+      padding: 12px;
+      background: #ffffff;
+    }
+
+    .diagram-box svg {
+      width: 100%;
+      max-width: 1100px;
+      min-width: 850px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .note {
+      color: #666;
+      font-size: 13px;
+    }
+
+    @media print {
+      .toolbar {
+        display: none;
+      }
+
+      body {
+        padding: 18px;
+      }
+
+      h2 {
+        break-after: avoid;
+      }
+
+      table, .diagram-box {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">列印</button>
+  </div>
+
+  <h1>Sequential Circuit Design Automation System</h1>
+
+  <div class="meta">
+    System Result Report<br />
+    姓名：邵亭毓　學號：1140939
+  </div>
+
+  <h2>一、Student and System Information</h2>
+  <div class="info-box">
+    <p><strong>Student Name：</strong>邵亭毓</p>
+    <p><strong>Student ID：</strong>1140939</p>
+    <p><strong>Model Type：</strong>${escapeHtml(modelType)} Model</p>
+    <p><strong>Flip-Flop Type：</strong>${escapeHtml(ffType)} Flip-Flop</p>
+    <p><strong>Input Variables：</strong>${escapeHtml(inputVariables)}</p>
+    <p><strong>Output Variables：</strong>${escapeHtml(outputVariables)}</p>
+    <p><strong>State Variables：</strong>${escapeHtml(generated.stateVariables.join(", "))}</p>
+  </div>
+
+  <h2>二、Input State Table</h2>
+  <p class="note">
+    This table is the user input used by the system to generate the following state encoding,
+    flip-flop input equations, K-map data, and circuit diagram.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Present State</th>
+        <th>Input</th>
+        <th>Next State</th>
+        <th>Output</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${stateTableRows}
+    </tbody>
+  </table>
+
+  <h2>三、State Encoding</h2>
+  <p class="note">
+    The system automatically assigns binary codes to all states appearing in the state table.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>State</th>
+        <th>Binary Code</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${stateEncodingRows}
+    </tbody>
+  </table>
+
+  <h2>四、Output1: Flip-Flop Input Equations</h2>
+  <p class="note">
+    Output1 lists the simplified input equations for each flip-flop.
+    For D-FF, D inputs are generated from next-state bits.
+    For JK-FF, J and K inputs are generated according to the JK excitation table.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Flip-Flop</th>
+        <th>Input</th>
+        <th>Simplified Equation</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${equationRows}
+    </tbody>
+  </table>
+
+  <h2>五、K-map Data</h2>
+  <p class="note">
+    This section records the variables, minterms, don't-care terms, and simplified result
+    used in the Boolean simplification process. 1 represents a minterm and X represents a don't-care condition.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>FF Input</th>
+        <th>Variables</th>
+        <th>Minterms</th>
+        <th>Don't-Cares</th>
+        <th>Simplified Equation</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${kmapRows}
+    </tbody>
+  </table>
+
+  <h2>六、Output2: Sequential Circuit Diagram</h2>
+  <p class="note">
+    Output2 is generated from the simplified equations in Output1.
+    The diagram shows the selected flip-flop type, logic gates, feedback paths, clock line, and output logic.
+  </p>
+
+  <div class="diagram-box">
+    ${circuitSvgHtml}
+  </div>
+
+  <h2>七、System Generation Flow</h2>
+  <div class="flow">
+    <p>1. Read the input variables, output variables, model type, flip-flop type, and state table.</p>
+    <p>2. Extract all states from present-state and next-state columns.</p>
+    <p>3. Assign binary state encoding according to the number of states.</p>
+    <p>4. Convert each state transition into present-state bits and next-state bits.</p>
+    <p>5. Generate flip-flop input requirements according to the selected flip-flop type.</p>
+    <p>6. Use minterms and don't-care terms to simplify Boolean expressions.</p>
+    <p>7. Display Output1 equations, K-map data, and Output2 circuit diagram.</p>
+    <p>8. Export this result report based on the current generated result.</p>
+  </div>
+
+  <p class="note">
+    This document is automatically generated by the system based on the current execution result.
+    It is intended as a system output report, not as the full final project written report.
+  </p>
+</body>
+</html>
+`;
+
+  const reportWindow = window.open("", "_blank");
+
+  if (!reportWindow) {
+    alert("瀏覽器封鎖了彈出視窗，請允許彈出視窗後再試一次。");
+    return;
   }
 
-  function getLabelPosition(from: string, to: string, index: number) {
-    const start = positions[from];
-    const end = positions[to];
-
-    if (!start || !end) {
-      return { x: 0, y: 0 };
-    }
-
-    if (from === to) {
-      return {
-        x: start.x,
-        y: start.y - 95,
-      };
-    }
-
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const length = Math.sqrt(dx * dx + dy * dy) || 1;
-
-    const curveOffset = index % 2 === 0 ? 28 : -28;
-
-    return {
-      x: (start.x + end.x) / 2 - (dy / length) * curveOffset,
-      y: (start.y + end.y) / 2 + (dx / length) * curveOffset,
-    };
-  }
-
-  return (
-    <div className="transition-section">
-      <div className="transition-header">
-        <h3>State Transition Chart</h3>
-
-        <button
-          onClick={() =>
-            downloadSvg("state-transition-chart", "state-transition-chart.svg")
-          }
-        >
-          Download Chart SVG
-        </button>
-      </div>
-
-      <div className="transition-wrapper">
-        <svg
-          id="state-transition-chart"
-          className="transition-svg"
-          viewBox={`0 0 ${width} ${height}`}
-          role="img"
-          aria-label="State transition chart"
-        >
-          <defs>
-            <marker
-              id="transitionArrow"
-              markerWidth="10"
-              markerHeight="10"
-              refX="8"
-              refY="3"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <path d="M0,0 L0,6 L9,3 z" fill="#333" />
-            </marker>
-          </defs>
-
-          <text x="24" y="34" className="svg-title">
-            State Transition Chart
-          </text>
-
-          <text x="24" y="58" className="svg-note">
-            Edge label format: input / output
-          </text>
-
-          {design.transitions.map((transition, index) => {
-            const labelPosition = getLabelPosition(
-              transition.present,
-              transition.next,
-              index
-            );
-
-            return (
-              <g key={`${transition.present}-${transition.next}-${index}`}>
-                <path
-                  d={getTransitionPath(
-                    transition.present,
-                    transition.next,
-                    index
-                  )}
-                  className="transition-edge"
-                  fill="none"
-                  markerEnd="url(#transitionArrow)"
-                />
-
-                <rect
-                  x={labelPosition.x - 34}
-                  y={labelPosition.y - 13}
-                  width="68"
-                  height="24"
-                  rx="6"
-                  className="transition-label-bg"
-                />
-
-                <text
-                  x={labelPosition.x}
-                  y={labelPosition.y + 4}
-                  textAnchor="middle"
-                  className="transition-label"
-                >
-                  {transition.input} / {transition.output || "-"}
-                </text>
-              </g>
-            );
-          })}
-
-          {states.map((state) => {
-            const position = positions[state];
-
-            return (
-              <g key={state}>
-                <circle
-                  cx={position.x}
-                  cy={position.y}
-                  r="34"
-                  className="state-node"
-                />
-
-                <text
-                  x={position.x}
-                  y={position.y - 4}
-                  textAnchor="middle"
-                  className="state-node-text"
-                >
-                  {state}
-                </text>
-
-                <text
-                  x={position.x}
-                  y={position.y + 16}
-                  textAnchor="middle"
-                  className="state-code-text"
-                >
-                  {design.stateCodes[state]}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-    </div>
-  );
+  reportWindow.document.open();
+  reportWindow.document.write(reportHtml);
+  reportWindow.document.close();
 }
 
 
@@ -1514,7 +1694,7 @@ export default function App() {
               
               <KMapPreview equations={generated.equations} />
 
-              <StateTransitionChart design={generated} />
+            
 
               <h3>State Variables: {stateVariableText}</h3>
 
@@ -1568,7 +1748,20 @@ export default function App() {
           Generate
         </button>
         <button onClick={loadExample}>Load Example</button>
-        <button disabled>Export Report</button>
+        <button
+          onClick={() =>
+            exportReport({
+              modelType,
+              ffType,
+              inputVariables,
+              outputVariables,
+              rows,
+              generated,
+            })
+          }
+        >
+          Export Report
+        </button>
         <button disabled>About</button>
       </footer>
     </div>
