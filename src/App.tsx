@@ -316,14 +316,20 @@ function generateDesign(
     }
   }
 
-  return {
-    stateNames,
-    stateCodes,
-    stateVariables,
-    inputVariables,
-    ffType,
-    equations,
-  };
+return {
+  stateNames,
+  stateCodes,
+  stateVariables,
+  inputVariables,
+  ffType,
+  equations,
+  transitions: rowInfo.map((row) => ({
+    present: row.present.trim(),
+    input: row.input.trim(),
+    next: row.next.trim(),
+    output: row.output.trim(),
+  })),
+};
 }
 
 function shortText(text: string, maxLength = 34): string {
@@ -1043,6 +1049,240 @@ function CircuitDiagram({
   );
 }
 
+function downloadSvg(svgId: string, filename: string) {
+  const svgElement = document.getElementById(svgId);
+
+  if (!svgElement) {
+    alert("找不到可以下載的圖表。");
+    return;
+  }
+
+  const serializer = new XMLSerializer();
+  const svgText = serializer.serializeToString(svgElement);
+
+  const blob = new Blob([svgText], {
+    type: "image/svg+xml;charset=utf-8",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
+
+
+function StateTransitionChart({
+  design,
+}: {
+  design: ReturnType<typeof generateDesign>;
+}) {
+  const width = 760;
+  const height = 420;
+  const centerX = width / 2;
+  const centerY = height / 2 + 20;
+  const radius = 135;
+
+  const states = design.stateNames;
+
+  const positions: Record<string, { x: number; y: number }> = {};
+
+  states.forEach((state, index) => {
+    const angle = (2 * Math.PI * index) / states.length - Math.PI / 2;
+    positions[state] = {
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle),
+    };
+  });
+
+  function getSelfLoopPath(x: number, y: number) {
+    return `M ${x + 25} ${y - 35}
+            C ${x + 95} ${y - 95}, ${x - 95} ${y - 95}, ${x - 25} ${y - 35}`;
+  }
+
+  function getTransitionPath(from: string, to: string, index: number) {
+    const start = positions[from];
+    const end = positions[to];
+
+    if (!start || !end) return "";
+
+    if (from === to) {
+      return getSelfLoopPath(start.x, start.y);
+    }
+
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const length = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    const nodeRadius = 32;
+
+    const startX = start.x + (dx / length) * nodeRadius;
+    const startY = start.y + (dy / length) * nodeRadius;
+    const endX = end.x - (dx / length) * nodeRadius;
+    const endY = end.y - (dy / length) * nodeRadius;
+
+    const curveOffset = index % 2 === 0 ? 28 : -28;
+    const midX = (startX + endX) / 2 - (dy / length) * curveOffset;
+    const midY = (startY + endY) / 2 + (dx / length) * curveOffset;
+
+    return `M ${startX} ${startY} Q ${midX} ${midY} ${endX} ${endY}`;
+  }
+
+  function getLabelPosition(from: string, to: string, index: number) {
+    const start = positions[from];
+    const end = positions[to];
+
+    if (!start || !end) {
+      return { x: 0, y: 0 };
+    }
+
+    if (from === to) {
+      return {
+        x: start.x,
+        y: start.y - 95,
+      };
+    }
+
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const length = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    const curveOffset = index % 2 === 0 ? 28 : -28;
+
+    return {
+      x: (start.x + end.x) / 2 - (dy / length) * curveOffset,
+      y: (start.y + end.y) / 2 + (dx / length) * curveOffset,
+    };
+  }
+
+  return (
+    <div className="transition-section">
+      <div className="transition-header">
+        <h3>State Transition Chart</h3>
+
+        <button
+          onClick={() =>
+            downloadSvg("state-transition-chart", "state-transition-chart.svg")
+          }
+        >
+          Download Chart SVG
+        </button>
+      </div>
+
+      <div className="transition-wrapper">
+        <svg
+          id="state-transition-chart"
+          className="transition-svg"
+          viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          aria-label="State transition chart"
+        >
+          <defs>
+            <marker
+              id="transitionArrow"
+              markerWidth="10"
+              markerHeight="10"
+              refX="8"
+              refY="3"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <path d="M0,0 L0,6 L9,3 z" fill="#333" />
+            </marker>
+          </defs>
+
+          <text x="24" y="34" className="svg-title">
+            State Transition Chart
+          </text>
+
+          <text x="24" y="58" className="svg-note">
+            Edge label format: input / output
+          </text>
+
+          {design.transitions.map((transition, index) => {
+            const labelPosition = getLabelPosition(
+              transition.present,
+              transition.next,
+              index
+            );
+
+            return (
+              <g key={`${transition.present}-${transition.next}-${index}`}>
+                <path
+                  d={getTransitionPath(
+                    transition.present,
+                    transition.next,
+                    index
+                  )}
+                  className="transition-edge"
+                  fill="none"
+                  markerEnd="url(#transitionArrow)"
+                />
+
+                <rect
+                  x={labelPosition.x - 34}
+                  y={labelPosition.y - 13}
+                  width="68"
+                  height="24"
+                  rx="6"
+                  className="transition-label-bg"
+                />
+
+                <text
+                  x={labelPosition.x}
+                  y={labelPosition.y + 4}
+                  textAnchor="middle"
+                  className="transition-label"
+                >
+                  {transition.input} / {transition.output || "-"}
+                </text>
+              </g>
+            );
+          })}
+
+          {states.map((state) => {
+            const position = positions[state];
+
+            return (
+              <g key={state}>
+                <circle
+                  cx={position.x}
+                  cy={position.y}
+                  r="34"
+                  className="state-node"
+                />
+
+                <text
+                  x={position.x}
+                  y={position.y - 4}
+                  textAnchor="middle"
+                  className="state-node-text"
+                >
+                  {state}
+                </text>
+
+                <text
+                  x={position.x}
+                  y={position.y + 16}
+                  textAnchor="middle"
+                  className="state-code-text"
+                >
+                  {design.stateCodes[state]}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+
+
 export default function App() {
 
   const [modelType, setModelType] = useState<ModelType>("Mealy");
@@ -1273,6 +1513,8 @@ export default function App() {
               </table>
               
               <KMapPreview equations={generated.equations} />
+
+              <StateTransitionChart design={generated} />
 
               <h3>State Variables: {stateVariableText}</h3>
 
